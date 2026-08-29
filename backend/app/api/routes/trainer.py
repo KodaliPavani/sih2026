@@ -11,9 +11,10 @@ from app.models.models import (
     User, Student, StudentSkill, Skill, SkillEvidence, TrainingCohort,
     TrainingEnrollment, SkillMasteryHistory, AuditLog
 )
-from app.services.eligibility_engine import calculate_student_skill_detailed
+from app.services.eligibility_engine import calculate_student_skill_detailed, sync_student_readiness_and_eligibility
 
 router = APIRouter(prefix="/trainer", tags=["Trainer & Faculty Portal"])
+
 
 
 # Schemas
@@ -392,7 +393,7 @@ def evaluate_student_performance(
         db.add(evidence)
         db.commit()
 
-        # Recalculate deterministic skill mastery
+        # Recalculate deterministic skill mastery and full readiness/eligibility state
         detailed = calculate_student_skill_detailed(db, st.id, skill.id)
         new_mastery = detailed["mastery_score"]
 
@@ -421,24 +422,16 @@ def evaluate_student_performance(
             evidence_source=f"Faculty Verification: {cohort.title}"
         )
         db.add(history)
-
-        # Recalculate overall student readiness
-        avg_score = db.query(func.avg(StudentSkill.mastery_score)).filter(StudentSkill.student_id == st.id).scalar() or new_mastery
-        st.overall_readiness = round(avg_score, 1)
-        if st.overall_readiness >= 75.0:
-            st.readiness_status = "Ready"
-        elif st.overall_readiness >= 60.0:
-            st.readiness_status = "Near Ready"
-        else:
-            st.readiness_status = "Needs Improvement"
-
         db.commit()
+
+        # Synchronize entire student state across Placement Cell & Student portals
+        sync_res = sync_student_readiness_and_eligibility(db, st, reason=f"Faculty Endorsement: {cohort.title}")
 
         log = AuditLog(
             user_id=current_user.id,
             action="TRAINER_EVALUATION_COMPLETED",
             target_resource=f"Student: {st.student_id}, Skill: {skill.canonical_name}",
-            details_json=f"Post-training score: {score}%, New Mastery: {new_mastery}%"
+            details_json=f"Post-training score: {score}%, New Mastery: {new_mastery}%, Readiness: {st.overall_readiness}% ({st.readiness_status})"
         )
         db.add(log)
         db.commit()
@@ -452,7 +445,9 @@ def evaluate_student_performance(
             "old_mastery": old_score,
             "new_mastery": new_mastery,
             "mastery_state": detailed["mastery_state"],
-            "new_overall_readiness": st.overall_readiness
+            "new_overall_readiness": st.overall_readiness,
+            "readiness_status": st.readiness_status,
+            "unlocked_jobs": sync_res.get("unlocked_jobs", [])
         }
 
     return {"message": "Evaluation recorded", "post_training_score": score}
@@ -467,6 +462,7 @@ def bulk_endorse_cohort_students(
 ):
     """
     Batch evaluates and endorses multiple students in the cohort.
+    Automatically updates student readiness, status, and company eligibility across all portals.
     """
     cohort = db.query(TrainingCohort).filter(TrainingCohort.id == cohort_id).first()
     if not cohort:
@@ -532,11 +528,12 @@ def bulk_endorse_cohort_students(
                 evidence_source=f"Batch Faculty Verification: {cohort.title}"
             )
             db.add(history)
+            db.commit()
 
-            avg_score = db.query(func.avg(StudentSkill.mastery_score)).filter(StudentSkill.student_id == st.id).scalar() or new_mastery
-            st.overall_readiness = round(avg_score, 1)
+            sync_student_readiness_and_eligibility(db, st, reason=f"Batch Endorsement: {cohort.title}")
 
         evaluated_count += 1
 
     db.commit()
-    return {"message": f"Successfully evaluated and endorsed {evaluated_count} students"}
+    return {"message": f"Successfully evaluated and endorsed {evaluated_count} students across all portals"}
+

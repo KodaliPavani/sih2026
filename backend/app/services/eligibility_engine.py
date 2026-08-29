@@ -3,9 +3,11 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Any, Optional
 from sqlalchemy.orm import Session
 from app.models.models import (
-    Student, StudentSkill, SkillEvidence, JobDescription, JobRequirement, Skill, ReadinessScore, SkillGap
+    Student, StudentSkill, SkillEvidence, JobDescription, JobRequirement, Skill,
+    ReadinessScore, ReadinessHistory, SkillGap, EligibilityResult
 )
 from app.services.prerequisite_engine import detect_hidden_prerequisite_gaps, check_student_prerequisites_met
+
 
 IMPORTANCE_WEIGHTS = {
     "HIGH": 3.0,
@@ -470,4 +472,153 @@ def simulate_career_readiness(
         "projected_status": proj_status,
         "role_impacts": sorted(role_impacts, key=lambda x: x["improvement_delta"], reverse=True)
     }
+
+
+def sync_student_readiness_and_eligibility(db: Session, student: Student, reason: str = "Faculty Verification Endorsement") -> dict:
+    """
+    Comprehensive State Synchronization Engine:
+    Whenever a student is evaluated/graded by a trainer or completes a reassessment:
+    1. Recalculates all student skill scores and updates StudentSkill mastery states.
+    2. Recalculates student overall_readiness and readiness_status ('Ready', 'Near Ready', 'Needs Improvement').
+    3. Updates or creates ReadinessScore and ReadinessHistory records for student target_role.
+    4. Cleans up or updates SkillGap records for all skills where student now meets required thresholds.
+    5. Re-evaluates EligibilityResult against all active JobDescription records (updating NOT_ELIGIBLE -> ELIGIBLE).
+    6. Commits changes to the database.
+    """
+    # 1. Recalculate all student skills
+    student_skills = db.query(StudentSkill).filter(StudentSkill.student_id == student.id).all()
+    all_scores = []
+    
+    for st_sk in student_skills:
+        detailed = calculate_student_skill_detailed(db, student.id, st_sk.skill_id)
+        st_sk.mastery_score = detailed["mastery_score"]
+        st_sk.mastery_state = detailed["mastery_state"]
+        st_sk.confidence = detailed["confidence"]
+        st_sk.last_assessed_at = datetime.utcnow()
+        all_scores.append(st_sk.mastery_score)
+
+    # 2. Recalculate overall readiness
+    new_overall = round(sum(all_scores) / len(all_scores), 1) if all_scores else student.overall_readiness
+    old_readiness = student.overall_readiness
+    delta = round(new_overall - old_readiness, 1)
+
+    student.overall_readiness = new_overall
+    if new_overall >= 75.0:
+        student.readiness_status = "Ready"
+    elif new_overall >= 60.0:
+        student.readiness_status = "Near Ready"
+    else:
+        student.readiness_status = "Needs Improvement"
+
+    # 3. Update ReadinessScore for target role
+    target_role = student.target_role or "Java Backend Developer"
+    rs = db.query(ReadinessScore).filter(
+        ReadinessScore.student_id == student.id,
+        ReadinessScore.job_role == target_role
+    ).first()
+    if rs:
+        rs.score = new_overall
+        rs.status = student.readiness_status
+        rs.calculated_at = datetime.utcnow()
+    else:
+        rs = ReadinessScore(
+            student_id=student.id,
+            job_role=target_role,
+            score=new_overall,
+            status=student.readiness_status,
+            calculated_at=datetime.utcnow()
+        )
+        db.add(rs)
+
+    # 4. Log Readiness History
+    history_entry = ReadinessHistory(
+        student_id=student.id,
+        job_role=target_role,
+        score=new_overall,
+        change_delta=delta,
+        source=reason,
+        recorded_at=datetime.utcnow()
+    )
+    db.add(history_entry)
+
+    # 5. Re-evaluate and persist EligibilityResult for ALL active Jobs
+    jobs = db.query(JobDescription).all()
+    unlocked_jobs = []
+
+    for job in jobs:
+        eval_res = evaluate_job_eligibility(db, student, job)
+        elig_status = eval_res.get("eligibility_status", "NOT_ELIGIBLE")
+        elig_score = eval_res.get("role_readiness_score", 0.0)
+
+        # Update or insert into eligibility_results table
+        el_record = db.query(EligibilityResult).filter(
+            EligibilityResult.job_id == job.id,
+            EligibilityResult.student_id == student.id
+        ).first()
+
+        old_status = el_record.status if el_record else "NOT_ELIGIBLE"
+
+        if el_record:
+            el_record.status = elig_status
+            el_record.eligibility_score = elig_score
+            el_record.calculated_at = datetime.utcnow()
+        else:
+            el_record = EligibilityResult(
+                job_id=job.id,
+                student_id=student.id,
+                status=elig_status,
+                eligibility_score=elig_score,
+                calculated_at=datetime.utcnow()
+            )
+            db.add(el_record)
+
+        if old_status != "ELIGIBLE" and elig_status == "ELIGIBLE":
+            unlocked_jobs.append(f"{job.company_name} - {job.role_title}")
+
+    # 6. Re-evaluate SkillGap table
+    # For target role job requirements, update or delete gaps
+    target_job = db.query(JobDescription).filter(JobDescription.role_title == target_role).first()
+    if target_job:
+        requirements = db.query(JobRequirement).filter(JobRequirement.job_id == target_job.id).all()
+        for req in requirements:
+            sk_detail = calculate_student_skill_detailed(db, student.id, req.skill_id)
+            current_sc = sk_detail["mastery_score"]
+            gap_item = db.query(SkillGap).filter(
+                SkillGap.student_id == student.id,
+                SkillGap.skill_id == req.skill_id
+            ).first()
+
+            if current_sc >= req.min_score:
+                if gap_item:
+                    db.delete(gap_item)
+            else:
+                gap_pts = round(req.min_score - current_sc, 1)
+                if gap_item:
+                    gap_item.current_score = current_sc
+                    gap_item.gap_points = gap_pts
+                    gap_item.priority = "HIGH" if gap_pts > 20 else "MEDIUM"
+                else:
+                    gap_item = SkillGap(
+                        student_id=student.id,
+                        job_id=target_job.id,
+                        skill_id=req.skill_id,
+                        current_score=current_sc,
+                        required_score=req.min_score,
+                        gap_points=gap_pts,
+                        priority="HIGH" if gap_pts > 20 else "MEDIUM"
+                    )
+                    db.add(gap_item)
+
+    db.commit()
+
+    return {
+        "student_id": student.student_id,
+        "name": student.name,
+        "old_readiness": old_readiness,
+        "new_readiness": new_overall,
+        "readiness_delta": delta,
+        "readiness_status": student.readiness_status,
+        "unlocked_jobs": unlocked_jobs
+    }
+
 
