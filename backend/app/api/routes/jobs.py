@@ -100,6 +100,21 @@ def create_job_description(
 
     db.commit()
 
+    # Automatically create an active placement drive for this job
+    existing_drive = db.query(PlacementDrive).filter(PlacementDrive.job_id == job.id).first()
+    if not existing_drive:
+        from datetime import date, timedelta
+        drive = PlacementDrive(
+            job_id=job.id,
+            title=f"{job.company_name} - {job.role_title} Campus Drive",
+            drive_date=date.today() + timedelta(days=14),
+            deadline=date.today() + timedelta(days=7),
+            status="Active",
+            created_at=datetime.utcnow()
+        )
+        db.add(drive)
+        db.commit()
+
     log = AuditLog(user_id=current_user.id, action="CREATE_JOB", target_resource=f"Job {job.id}", details_json=f"Company: {job.company_name}, Role: {job.role_title}")
     db.add(log)
     db.commit()

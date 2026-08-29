@@ -17,6 +17,8 @@ import SkillGapsPage from './pages/student/SkillGapsPage';
 import LearningPlanPage from './pages/student/LearningPlanPage';
 import ReassessmentPage from './pages/student/ReassessmentPage';
 import StudentApplicationsPage from './pages/student/StudentApplicationsPage';
+import BlockersPage from './pages/student/BlockersPage';
+import SimulationPage from './pages/student/SimulationPage';
 
 // Placement Cell Layout & Pages
 import PlacementLayout from './layouts/PlacementLayout';
@@ -26,6 +28,7 @@ import JobManagementPage from './pages/placement/JobManagementPage';
 import EligibleStudentsPage from './pages/placement/EligibleStudentsPage';
 import AtRiskPage from './pages/placement/AtRiskPage';
 import TrainingPage from './pages/placement/TrainingPage';
+import DriveManagementPage from './pages/placement/DriveManagementPage';
 
 // Protected Route Guard
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -73,6 +76,8 @@ export default function App() {
         <Route path="profile" element={<StudentProfilePage />} />
         <Route path="passport" element={<SkillPassportPage />} />
         <Route path="evidence" element={<EvidencePage />} />
+        <Route path="blockers" element={<BlockersPage />} />
+        <Route path="simulation" element={<SimulationPage />} />
         <Route path="jobs" element={<JobOpportunitiesPage />} />
         <Route path="gaps" element={<SkillGapsPage />} />
         <Route path="learning" element={<LearningPlanPage />} />
@@ -93,6 +98,7 @@ export default function App() {
         <Route path="dashboard" element={<PlacementDashboard />} />
         <Route path="students" element={<StudentManagementPage />} />
         <Route path="jobs" element={<JobManagementPage />} />
+        <Route path="drives" element={<DriveManagementPage />} />
         <Route path="eligible" element={<EligibleStudentsPage />} />
         <Route path="at-risk" element={<AtRiskPage />} />
         <Route path="training" element={<TrainingPage />} />
@@ -103,3 +109,4 @@ export default function App() {
     </Routes>
   );
 }
+

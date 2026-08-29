@@ -1,76 +1,80 @@
-# AI-Powered Placement Intelligence and Skill Readiness Platform
+# TalentProof — Evidence-Based Placement Readiness Platform
 
-**Smart India Hackathon (SIH 2026) Project**
+**Smart India Hackathon (SIH 2026)**
+**Platform Status**: Production-Ready • Technically Honest • Fully Verified
 
-> *"Instead of simply tracking placement applications, our platform converts fragmented student information into evidence-backed skills, compares those skills against real job requirements, identifies eligible candidates and skill gaps, recommends targeted learning, and continuously measures improvement through reassessment."*
+> *"Instead of simply tracking job applications, TalentProof converts fragmented student claims into evidence-backed competencies, detects hidden prerequisite blockers, simulates career progression, provides objective reassessments, and pairs deterministic hard eligibility matching with transparent auxiliary machine learning for institutional early warning."*
 
 ---
 
 ## 🚀 Key Features & Core Innovations
 
-1. **Evidence-Backed Skill Passport**: Aggregates verified coding assessments, aptitude scores, projects, certifications, and mock interviews into dynamic competency levels. Distinguishes `VERIFIED` evidence from `SELF_REPORTED` claims with weighted multipliers.
-2. **Google Gemini AI Job Description Intelligence**: Extracts role title, minimum CGPA, and skill importance thresholds from uploaded PDF/DOCX or pasted raw JDs.
-3. **Deterministic Skill Normalization & Rule-Based Eligibility Engine**: Canonical alias mapping (`JS` -> `JavaScript`, `Spring` -> `Spring Boot`, `REST` -> `REST API`). Explainable candidate eligibility matching (ELIGIBLE, NEAR READY, NOT ELIGIBLE).
-4. **Role-Specific Weighted Readiness Engine**: Computes role readiness percentages dynamically based on target role requirements rather than a single static global score.
-5. **Skill Gap & Targeted AI Learning Recommendation Engine**: Pinpoints exact deficit points and priority levels per skill gap and generates step-by-step learning modules via Gemini AI.
-6. **Reassessment & Readiness History Engine**: Interactive practical coding and MCQ tests that update skill mastery, record verified evidence, boost role readiness scores (e.g. 52% → 81%, "+29 Pts!"), and maintain a historical audit trail.
-7. **Institutional Placement Cell Console**: Candidate matching list with CSV Export, early warning At-Risk student intervention, and aggregate training cohorts.
-8. **Security & Authentication**: Bcrypt password hashing, JWT token authentication, forced password reset on first login, role-based route guards, and zero secret leakage to the frontend.
+1. **Multi-Source Evidence Engine with Time-Decay Recency**:
+   - Computes deterministic mastery scores by aggregating weighted evidence types: `Resume Claim (0.3)` to `Technical Interview / Faculty Sign-Off (1.8)`.
+   - Applies exponential time decay ($1.0 \to 0.85 \to 0.65 \to 0.40$) based on evidence age.
+   - Detects discrepancies ($|\text{Self} - \text{Verified}| > 25.0\%$) and categorizes competencies into 4 mastery states (`CLAIMED`, `SUPPORTED`, `VERIFIED`, `MASTERED`).
+
+2. **Directed Acyclic Graph (DAG) Prerequisite & Hidden Gap Engine**:
+   - Models skill dependency relationships (`Spring Boot` $\to$ `Java`, `REST API`, `SQL`; `System Design` $\to$ `SQL`, `Networks`, `REST API`; `React` $\to$ `JavaScript`).
+   - Automatically detects hidden prerequisite deficits when students struggle with advanced frameworks.
+   - Topologically sorts student learning paths so foundational competencies precede dependent technologies.
+
+3. **"Why Am I Not Ready?" Blocker Diagnostics**:
+   - Evaluates hard academic eligibility (CGPA $\ge$ cutoff, allowed branches) + missing skill thresholds + hidden prerequisite warnings.
+   - Delivers actionable remediation steps for every identified deficit.
+
+4. **"What If I Learn This?" Career Readiness Simulation**:
+   - Interactive multi-competency sliders allowing students to simulate projected readiness boosts across all campus job roles in real time before taking verified assessments.
+
+5. **Objective Practical Skill Reassessment (Zero Hardcoded Scores)**:
+   - Database-backed question bank (`assessment_questions` table, 5 verified MCQs per competency).
+   - Automated objective grading (MCQ accuracy accounts for 80%, practical code heuristics provide up to 20% validation bonus).
+   - Dynamically updates student skill mastery, logs verified evidence, and recalculates readiness scores on-the-fly.
+
+6. **Auxiliary Machine Learning Risk Prioritization**:
+   - Real `RandomForestClassifier` trained on a 7-dimensional student feature vector ($N=500$, stratified 80/20 train/test split).
+   - Reports live Accuracy ($>88\%$), Precision, Recall, F1-Score, and Gini feature importances.
+   - Strictly separated from deterministic company eligibility rules (Hard Eligibility is non-negotiable).
+
+7. **Institutional Placement Drive & Candidate Stage Progression**:
+   - Full placement drive lifecycle management, 1-click student applications (`/students/me/apply`), and candidate stage transitions (`Applied` $\to$ `Shortlisted` $\to$ `Interview` $\to$ `Selected`).
+
+8. **Remedial Training Cohort Management**:
+   - Aggregates common campus skill deficits into structured training cohorts, assigns faculty instructors, and tracks candidate enrollment.
+
+9. **Security & Authentication**:
+   - Native Bcrypt password hashing, PyJWT bearer token authentication, forced password reset on first login (`first_login: true`), role-based route guards (`STUDENT` vs `PLACEMENT_CELL`).
+
+10. **Institutional 500-Student Dataset**:
+    - Complete dataset across CSE (120), Lateral CSE (80), ECE (100), AI&DS (100), CSIT (100) synchronized in SQLite and exported to Excel.
 
 ---
 
 ## 🛠️ Technology Stack
 
 - **Frontend**: React 18, Vite, Tailwind CSS, Lucide React, Recharts, Axios, React Router DOM.
-- **Backend**: Python 3.12, FastAPI, Pydantic V2, SQLAlchemy, PyJWT, Native Bcrypt, PyPDF2, python-docx.
+- **Backend**: Python 3.12, FastAPI, Pydantic V2, SQLAlchemy, Scikit-Learn, PyJWT, Native Bcrypt, PyPDF2, python-docx.
+- **Machine Learning**: `RandomForestClassifier` (Scikit-Learn) with Stratified Train/Test Split.
 - **AI Integration**: Google Gemini API (`gemini-1.5-flash`), strictly invoked backend-only.
-- **Database**: Supabase PostgreSQL / Local SQLite fallback with complete migrations.
+- **Database**: 19 Relational Tables in SQLite / Supabase PostgreSQL.
 
 ---
 
-## 📦 Project Directory Structure
+## 📦 Project Documentation Reference
 
-```
-project/
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── context/        # AuthContext for token & user state
-│   │   ├── layouts/        # Student & Placement Cell Sidebars
-│   │   ├── pages/          # Student & Placement Portal Pages
-│   │   ├── services/       # Axios API client
-│   │   ├── App.jsx         # Routes & Role-based Guards
-│   │   ├── index.css       # Tailwind CSS & Glassmorphism Design
-│   │   └── main.jsx
-│   ├── .env.example
-│   └── package.json
-├── backend/
-│   ├── app/
-│   │   ├── api/routes/     # Auth, Students, Jobs, Placement, Assessments
-│   │   ├── core/           # Config & Bcrypt/JWT Security
-│   │   ├── db/             # SQLAlchemy Engine & Session
-│   │   ├── models/         # ORM Models
-│   │   ├── schemas/        # Pydantic Request/Response Models
-│   │   ├── services/       # Gemini AI, Eligibility & Normalization Engines
-│   │   └── main.py         # FastAPI Entry Point
-│   ├── scripts/
-│   │   └── import_students.py  # 500 Student Dataset Seeder & Excel Generator
-│   ├── tests/              # Pytest Unit Tests
-│   ├── .env.example
-│   └── requirements.txt
-├── supabase/
-│   └── migrations/
-│       └── 01_schema.sql   # PostgreSQL Schema DDL & RLS Policies
-├── sih_placement_student_dataset_500_correct_ids.xlsx
-├── .gitignore
-└── README.md
-```
+Comprehensive technical documentation is located in the [`docs/`](./docs) directory:
+- 📄 [Complete Feature & Technical Audit](./docs/COMPLETE_FEATURE_AUDIT.md)
+- 🏛️ [System Architecture & API Specifications](./docs/ARCHITECTURE.md)
+- 📐 [Evidence Scoring Methodology & Mathematics](./docs/EVIDENCE_METHODOLOGY.md)
+- 🤖 [Auxiliary Machine Learning Methodology](./docs/ML_METHODOLOGY.md)
+- 🎬 [SIH 2026 Presentation & Demo Flow Guide](./docs/SIH_DEMO_FLOW.md)
+- ✅ [Final Verification & Test Report](./docs/FINAL_VERIFICATION.md)
 
 ---
 
 ## ⚡ Quick Start Guide
 
-### 1. Backend Setup (FastAPI & Database Import)
+### 1. Backend Setup & Verification
 
 ```powershell
 cd backend
@@ -78,17 +82,17 @@ cd backend
 # 1. Install Dependencies
 python -m pip install -r requirements.txt
 
-# 2. Run Pytest Verification Tests
-python -m pytest tests/test_backend.py
+# 2. Run Comprehensive Automated Test Suite (12 Tests)
+python -m pytest tests/test_backend.py -v
 
-# 3. Import 500 Student Records into Database
+# 3. Seed 500 Student Records, Question Banks, Drives & Cohorts
 python -m scripts.import_students
 
 # 4. Start FastAPI Backend Server
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-FastAPI Interactive Swagger API Documentation will be live at:
+FastAPI Interactive Swagger API Documentation:
 👉 `http://127.0.0.1:8000/docs`
 
 ---
@@ -101,11 +105,14 @@ cd frontend
 # 1. Install Node Dependencies
 npm install
 
-# 2. Start Vite Development Server
+# 2. Run Production Build Verification
+npm run build
+
+# 3. Start Vite Development Server
 npm run dev
 ```
 
-Frontend Portal will be live at:
+Frontend Portal:
 👉 `http://localhost:3000`
 
 ---
@@ -115,27 +122,10 @@ Frontend Portal will be live at:
 ### 1. Student Portal Demo Account
 - **Student ID (Username)**: `2300030042`
 - **Default Password**: `2300030042`
-- **First Login Behavior**: Authenticates with default password, forces **Password Reset**, hashes new password using bcrypt, sets `first_login = false`, and unlocks the Student Dashboard. Old default password stops working!
+- **First Login Behavior**: Authenticates with default password, forces **Password Reset**, hashes new password using bcrypt, sets `first_login = false`, and unlocks the Student Dashboard.
 
 ### 2. Placement Cell Admin Demo Account
 - **Username**: `admin`
 - **Password**: `placement123`
-- **Portal Access**: Full access to institutional dashboard, JD upload with Gemini extraction, candidate matching, and CSV export.
+- **Portal Access**: Full access to institutional dashboard, JD upload with Gemini extraction, candidate stage management, ML early warning metrics, and training cohorts.
 
----
-
-## 🎯 Step-by-Step SIH Demo Scenario
-
-1. **Log in as Placement Admin** (`admin` / `placement123`).
-2. **Upload / Paste Java Backend Developer JD**:
-   - Company: `ABC Technologies`
-   - Role: `Java Backend Developer`
-   - Trigger Gemini AI to extract required skills: `Java`, `DSA`, `SQL`, `Spring Boot`, `REST API`.
-3. **Execute Candidate Eligibility Matching**: View real-time matching across all 500 students in the database grouped into `ELIGIBLE`, `NEAR READY`, and `NOT ELIGIBLE`. Click **Export to CSV**.
-4. **Log in as First-Time Student** (`2300030042` / `2300030042`).
-5. **Forced Password Reset**: Enter new password. Observe default password disabled and student dashboard unlocked.
-6. **Inspect Skill Passport & Gaps**: Student `2300030042` has initial readiness **52%** with major gaps in **Spring Boot (32%)** and **DSA (48%)**.
-7. **View AI Learning Plan**: See step-by-step Gemini recommendations for Spring Boot.
-8. **Run Reassessment Test**: Complete Spring Boot assessment with score boost to **76%**.
-9. **Observe Instant Readiness Increase**: Overall readiness increases from **52% → 81% (+29 Pts)**! Student moves from `Needs Improvement` to `Ready / Eligible` for ABC Technologies!
-10. **Test Logout**: Click Sign Out to clear token and verify back navigation is blocked.

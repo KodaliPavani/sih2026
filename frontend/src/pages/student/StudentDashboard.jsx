@@ -10,7 +10,10 @@ import {
   ArrowRight,
   Target,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  HelpCircle,
+  Sliders,
+  Layers
 } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -18,6 +21,7 @@ export default function StudentDashboard() {
   const [profile, setProfile] = useState(null);
   const [readiness, setReadiness] = useState(null);
   const [gaps, setGaps] = useState([]);
+  const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
@@ -29,14 +33,16 @@ export default function StudentDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [profRes, readRes, gapRes] = await Promise.all([
+      const [profRes, readRes, gapRes, skillRes] = await Promise.all([
         api.get('/students/me/profile'),
         api.get('/students/me/readiness'),
         api.get('/students/me/gaps'),
+        api.get('/students/me/skills'),
       ]);
       setProfile(profRes.data);
       setReadiness(readRes.data);
       setGaps(gapRes.data);
+      setSkills(skillRes.data);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
     } finally {
@@ -52,8 +58,9 @@ export default function StudentDashboard() {
     );
   }
 
-  const score = readiness?.overall_readiness || profile?.overall_readiness || 52;
+  const score = readiness?.overall_readiness ?? profile?.overall_readiness ?? 0.0;
   const status = readiness?.status || profile?.readiness_status || 'Needs Improvement';
+  const totalEvidence = profile?.evidence_records_count || skills.reduce((acc, s) => acc + (s.evidence_count || 0), 0);
 
   const chartData = [
     { name: 'Readiness Score', value: score },
@@ -69,7 +76,7 @@ export default function StudentDashboard() {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold mb-2">
-              <Sparkles className="w-3.5 h-3.5" /> AI Readiness Engine Active
+              <Sparkles className="w-3.5 h-3.5" /> Evidence-Based Intelligence Engine Active
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
               Welcome back, {profile?.name || 'Student'}!
@@ -78,12 +85,26 @@ export default function StudentDashboard() {
               Target Role: <span className="text-sky-400 font-semibold">{profile?.target_role}</span> • Student ID: {profile?.student_id} • Branch: {profile?.branch}
             </p>
           </div>
-          <button
-            onClick={() => navigate('/student/reassessment')}
-            className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-sky-500/25 transition-all shrink-0"
-          >
-            <RotateCcw className="w-4 h-4" /> Start Skill Reassessment
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => navigate('/student/blockers')}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-bold text-xs transition-all shrink-0"
+            >
+              <HelpCircle className="w-4 h-4" /> Why Am I Not Ready?
+            </button>
+            <button
+              onClick={() => navigate('/student/simulation')}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-bold text-xs transition-all shrink-0"
+            >
+              <Sliders className="w-4 h-4" /> Career Simulation
+            </button>
+            <button
+              onClick={() => navigate('/student/reassessment')}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-sky-500/25 transition-all shrink-0"
+            >
+              <RotateCcw className="w-4 h-4" /> Start Skill Reassessment
+            </button>
+          </div>
         </div>
       </div>
 
@@ -108,13 +129,13 @@ export default function StudentDashboard() {
         <div className="glass-card p-4 rounded-2xl border border-slate-800">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Identified Gaps</div>
           <div className="text-2xl font-extrabold text-amber-400 mt-1">{gaps.length} Skills</div>
-          <div className="text-[11px] text-slate-400 mt-1">Requires improvement</div>
+          <div className="text-[11px] text-slate-400 mt-1">Requires upskilling</div>
         </div>
 
         <div className="glass-card p-4 rounded-2xl border border-slate-800">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Verified Evidence</div>
-          <div className="text-2xl font-extrabold text-indigo-400 mt-1">6 Records</div>
-          <div className="text-[11px] text-indigo-300 mt-1">Coding & Practical</div>
+          <div className="text-2xl font-extrabold text-indigo-400 mt-1">{totalEvidence} Records</div>
+          <div className="text-[11px] text-indigo-300 mt-1">Practical & Assessments</div>
         </div>
       </div>
 
@@ -173,7 +194,7 @@ export default function StudentDashboard() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-400" /> Top Priority Skill Gaps
+                <AlertCircle className="w-5 h-5 text-amber-400" /> Priority Skill Gaps & Prerequisite Dependencies
               </h2>
               <button
                 onClick={() => navigate('/student/gaps')}
@@ -192,14 +213,17 @@ export default function StudentDashboard() {
                     </div>
                     <div>
                       <div className="font-bold text-xs text-white">{gap.skill_name}</div>
-                      <div className="text-[11px] text-slate-400">Current: {gap.current_score}% • Threshold: {gap.required_score}%</div>
+                      <div className="text-[11px] text-slate-400">Current: {gap.current_score}% • Required: {gap.required_score}%</div>
+                      {gap.prerequisite_alert && (
+                        <div className="text-[10px] text-rose-400 mt-0.5">{gap.prerequisite_alert}</div>
+                      )}
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                       gap.priority === 'HIGH' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                     }`}>
-                      {gap.gap_points} Pts Gap ({gap.priority})
+                      {gap.gap_points} Pts Deficit
                     </span>
                   </div>
                 </div>
@@ -207,14 +231,22 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between">
-            <span className="text-xs text-slate-400">Complete AI recommended learning to bridge skill gaps.</span>
-            <button
-              onClick={() => navigate('/student/learning')}
-              className="px-4 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-400 text-xs font-bold transition-all"
-            >
-              Open Learning Plan
-            </button>
+          <div className="mt-4 pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs text-slate-400">Strengthen foundational skills to boost placement eligibility.</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/student/blockers')}
+                className="px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-bold transition-all"
+              >
+                Inspect Blockers
+              </button>
+              <button
+                onClick={() => navigate('/student/learning')}
+                className="px-4 py-2 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 text-sky-400 text-xs font-bold transition-all"
+              >
+                Open Learning Plan
+              </button>
+            </div>
           </div>
         </div>
 
@@ -222,3 +254,4 @@ export default function StudentDashboard() {
     </div>
   );
 }
+

@@ -7,7 +7,8 @@ from app.db.session import SessionLocal, engine, Base
 from app.core.security import get_password_hash
 from app.core.config import settings
 from app.models.models import (
-    User, Student, PlacementCellUser, Skill, SkillAlias, StudentSkill, SkillEvidence, JobDescription, JobRequirement
+    User, Student, PlacementCellUser, Skill, SkillAlias, StudentSkill, SkillEvidence,
+    JobDescription, JobRequirement, PlacementDrive, TrainingCohort
 )
 from app.services.normalization_service import get_or_create_skill
 from app.services.eligibility_engine import calculate_role_readiness_score
@@ -110,6 +111,60 @@ def seed_database():
             jr = JobRequirement(job_id=abc_job.id, skill_id=skill_objs[s_name].id, importance=imp, min_score=min_s)
             db.add(jr)
         db.commit()
+
+    # Seed Placement Drives
+    if db.query(PlacementDrive).count() == 0:
+        from datetime import date, timedelta
+        jobs = db.query(JobDescription).all()
+        for j in jobs:
+            drive = PlacementDrive(
+                job_id=j.id,
+                title=f"{j.company_name} - {j.role_title} Campus Drive",
+                drive_date=date.today() + timedelta(days=14),
+                deadline=date.today() + timedelta(days=7),
+                status="Active"
+            )
+            db.add(drive)
+        db.commit()
+
+    # Seed Initial Training Cohorts
+    from app.models.models import TrainingCohort
+    if db.query(TrainingCohort).count() == 0:
+        c1 = TrainingCohort(
+            skill_id=skill_objs["DSA"].id,
+            title="DSA & Algorithmic Problem Solving Cohort",
+            description="Intensive practical coding drills on Binary Trees, Dynamic Programming, and Graph algorithms.",
+            target_role="Software Engineer",
+            instructor="Prof. K. Sharma (Placement Faculty)",
+            student_count=45,
+            status="Active"
+        )
+        c2 = TrainingCohort(
+            skill_id=skill_objs["Spring Boot"].id,
+            title="Spring Boot & Enterprise Microservices Cohort",
+            description="Hands-on backend development covering REST controllers, Spring Data JPA, and security.",
+            target_role="Java Backend Developer",
+            instructor="Er. V. Verma (Industry Mentor)",
+            student_count=62,
+            status="Active"
+        )
+        c3 = TrainingCohort(
+            skill_id=skill_objs["SQL"].id,
+            title="SQL Query Optimization & Database Design Cohort",
+            description="Mastering complex JOINs, indexing strategies, and database transaction isolation levels.",
+            target_role="Data Analyst",
+            instructor="Dr. P. Kodali (Database Lead)",
+            student_count=38,
+            status="Active"
+        )
+        db.add_all([c1, c2, c3])
+        db.commit()
+
+    # Sync Assessment Questions for all skills
+    from app.services.assessment_engine import sync_questions_to_db
+    for sk in skill_objs.values():
+        sync_questions_to_db(db, sk)
+
 
     # 4. Generate 500 Students Data
     students_meta = generate_student_ids()

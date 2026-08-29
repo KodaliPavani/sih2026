@@ -21,11 +21,13 @@ export default function PlacementLayout() {
   const navItems = [
     { label: 'Dashboard', path: '/placement/dashboard', icon: LayoutDashboard },
     { label: 'Student Directory', path: '/placement/students', icon: Users },
-    { label: 'JD & Skill Requirements', path: '/placement/jobs', icon: FileText },
-    { label: 'Eligible Candidates List', path: '/placement/eligible', icon: UserCheck },
+    { label: 'JD & Requirements', path: '/placement/jobs', icon: FileText },
+    { label: 'Placement Drives', path: '/placement/drives', icon: Building2 },
+    { label: 'Eligible Candidates', path: '/placement/eligible', icon: UserCheck },
     { label: 'At-Risk Students', path: '/placement/at-risk', icon: AlertTriangle },
     { label: 'Training Cohorts', path: '/placement/training', icon: GraduationCap },
   ];
+
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row">

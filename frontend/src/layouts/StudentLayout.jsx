@@ -27,12 +27,15 @@ export default function StudentLayout() {
     { label: 'My Profile', path: '/student/profile', icon: User },
     { label: 'Skill Passport', path: '/student/passport', icon: Award },
     { label: 'My Evidence', path: '/student/evidence', icon: FileCheck2 },
+    { label: 'Why Not Ready?', path: '/student/blockers', icon: Target },
+    { label: 'Career Simulation', path: '/student/simulation', icon: Sparkles },
     { label: 'Job Opportunities', path: '/student/jobs', icon: Briefcase },
     { label: 'Skill Gaps', path: '/student/gaps', icon: TrendingDown },
     { label: 'Learning Plan', path: '/student/learning', icon: BookOpen },
     { label: 'Reassessment', path: '/student/reassessment', icon: RotateCcw },
     { label: 'Applications', path: '/student/applications', icon: Send },
   ];
+
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row">
