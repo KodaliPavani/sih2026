@@ -77,11 +77,31 @@ def seed_database():
         db.add(pc_profile)
         db.commit()
 
+    # Seed Trainer / Faculty Accounts
+    trainers_seed = [
+        ("trainer", "trainer123", "Head Technical Trainer"),
+        ("trainer_dsa", "trainer123", "Prof. K. Sharma (Placement Faculty)"),
+        ("trainer_spring", "trainer123", "Er. V. Verma (Industry Mentor)"),
+        ("trainer_sql", "trainer123", "Dr. P. Kodali (Database Lead)")
+    ]
+    for t_user, t_pass, t_name in trainers_seed:
+        tr_obj = db.query(User).filter(User.username == t_user).first()
+        if not tr_obj:
+            tr_obj = User(
+                username=t_user,
+                role="TRAINER",
+                password_hash=get_password_hash(t_pass),
+                first_login=False
+            )
+            db.add(tr_obj)
+    db.commit()
+
     # 2. Canonical Skills Creation
     skill_names = ["Java", "Python", "DSA", "SQL", "Spring Boot", "REST API", "React", "Machine Learning", "Communication", "Aptitude", "Coding"]
     skill_objs = {}
     for name in skill_names:
         skill_objs[name] = get_or_create_skill(db, name)
+
 
     # 3. Create Demo Job Descriptions
     abc_job = db.query(JobDescription).filter(JobDescription.company_name == "ABC Technologies").first()

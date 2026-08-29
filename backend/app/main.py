@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.session import engine, Base
-from app.api.routes import auth, students, jobs, placement, assessments
+from app.api.routes import auth, students, jobs, placement, assessments, trainer
 
 # Create database tables if they do not exist
 Base.metadata.create_all(bind=engine)
@@ -31,6 +31,8 @@ app.include_router(students.router, prefix=settings.API_V1_STR)
 app.include_router(jobs.router, prefix=settings.API_V1_STR)
 app.include_router(placement.router, prefix=settings.API_V1_STR)
 app.include_router(assessments.router, prefix=settings.API_V1_STR)
+app.include_router(trainer.router, prefix=settings.API_V1_STR)
+
 
 @app.get("/")
 def root():

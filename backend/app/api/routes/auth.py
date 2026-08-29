@@ -31,6 +31,17 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         pc = db.query(PlacementCellUser).filter(PlacementCellUser.user_id == user.id).first()
         if pc:
             name = pc.name
+    elif user.role == "TRAINER":
+        username_low = user.username.lower()
+        if "dsa" in username_low:
+            name = "Prof. K. Sharma (Placement Faculty)"
+        elif "spring" in username_low:
+            name = "Er. V. Verma (Industry Mentor)"
+        elif "sql" in username_low:
+            name = "Dr. P. Kodali (Database Lead)"
+        else:
+            name = "Head Technical Trainer"
+
 
     access_token = create_access_token(data={"sub": user.username, "role": user.role, "user_id": user.id})
 

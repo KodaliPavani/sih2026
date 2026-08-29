@@ -30,6 +30,12 @@ import AtRiskPage from './pages/placement/AtRiskPage';
 import TrainingPage from './pages/placement/TrainingPage';
 import DriveManagementPage from './pages/placement/DriveManagementPage';
 
+// Trainer / Faculty Portal Layout & Pages
+import TrainerLayout from './layouts/TrainerLayout';
+import TrainerDashboard from './pages/trainer/TrainerDashboard';
+import TrainerCohortDetailsPage from './pages/trainer/TrainerCohortDetailsPage';
+import TrainerGradingPage from './pages/trainer/TrainerGradingPage';
+
 // Protected Route Guard
 const ProtectedRoute = ({ children, allowedRole }) => {
   const { user, loading } = useAuth();
@@ -50,8 +56,15 @@ const ProtectedRoute = ({ children, allowedRole }) => {
     return <Navigate to="/reset-password" replace />;
   }
 
-  if (allowedRole && user.role !== allowedRole) {
-    return <Navigate to={user.role === 'STUDENT' ? '/student/dashboard' : '/placement/dashboard'} replace />;
+  if (allowedRole) {
+    const isAllowed = Array.isArray(allowedRole)
+      ? allowedRole.includes(user.role)
+      : user.role === allowedRole;
+    if (!isAllowed) {
+      if (user.role === 'STUDENT') return <Navigate to="/student/dashboard" replace />;
+      if (user.role === 'TRAINER') return <Navigate to="/trainer/dashboard" replace />;
+      return <Navigate to="/placement/dashboard" replace />;
+    }
   }
 
   return children;
@@ -105,8 +118,25 @@ export default function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
 
+      {/* Faculty Trainer Portal Routes */}
+      <Route
+        path="/trainer"
+        element={
+          <ProtectedRoute allowedRole={["TRAINER", "PLACEMENT_CELL"]}>
+            <TrainerLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<TrainerDashboard />} />
+        <Route path="cohorts" element={<TrainerDashboard />} />
+        <Route path="cohorts/:id" element={<TrainerCohortDetailsPage />} />
+        <Route path="grading" element={<TrainerGradingPage />} />
+        <Route index element={<Navigate to="dashboard" replace />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
+
 
