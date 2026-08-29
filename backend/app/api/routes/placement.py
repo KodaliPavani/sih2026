@@ -8,15 +8,19 @@ from app.db.session import get_db
 from app.auth.deps import require_role, get_current_user
 from app.models.models import (
     Student, StudentSkill, Skill, SkillEvidence, JobDescription, PlacementApplication,
-    PlacementDrive, TrainingCohort, TrainingEnrollment, SkillMasteryHistory, AuditLog
+    PlacementDrive, TrainingCohort, TrainingEnrollment, SkillMasteryHistory, AuditLog,
+    EligibilityResult, SkillGap, ReadinessScore
 )
 from app.schemas.schemas import (
     PlacementDriveCreateRequest, PlacementDriveResponse, ApplicationStatusUpdateRequest,
     TrainingCohortCreateRequest, TrainingCohortResponse
 )
 from app.services.normalization_service import get_or_create_skill
-from app.services.eligibility_engine import calculate_student_skill_detailed
+from app.services.eligibility_engine import (
+    calculate_student_skill_detailed, sync_student_readiness_and_eligibility, evaluate_job_eligibility
+)
 from app.services.ml_readiness_predictor import ml_engine
+
 
 router = APIRouter(prefix="/placement", tags=["Placement Cell Portal"])
 
@@ -106,6 +110,12 @@ def search_students(
 
     results = []
     for s in students:
+        # Check if student has verified faculty endorsements
+        faculty_ev = db.query(SkillEvidence).filter(
+            SkillEvidence.student_id == s.id,
+            SkillEvidence.type == "Faculty Verification"
+        ).first()
+
         results.append({
             "id": s.id,
             "student_id": s.student_id,
@@ -115,7 +125,9 @@ def search_students(
             "target_role": s.target_role,
             "overall_readiness": s.overall_readiness,
             "readiness_status": s.readiness_status,
-            "certifications_count": s.certifications_count
+            "certifications_count": s.certifications_count,
+            "has_faculty_verification": faculty_ev is not None,
+            "latest_endorsement": faculty_ev.source if faculty_ev else None
         })
     return results
 
@@ -126,7 +138,9 @@ def get_student_details_for_placement(
     db: Session = Depends(get_db),
     current_user = Depends(require_role(["PLACEMENT_CELL"]))
 ):
-    student = db.query(Student).filter(Student.student_id == student_id).first()
+    student = db.query(Student).filter(
+        or_(Student.student_id == student_id, Student.id == student_id)
+    ).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
@@ -178,6 +192,36 @@ def get_student_details_for_placement(
         for h, sk in history
     ]
 
+    # Active Job Eligibility for this candidate
+    jobs = db.query(JobDescription).all()
+    job_eligibility = []
+    for j in jobs:
+        eval_res = evaluate_job_eligibility(db, student, j)
+        job_eligibility.append({
+            "job_id": j.id,
+            "company_name": j.company_name,
+            "role_title": j.role_title,
+            "status": eval_res.get("eligibility_status", "NOT_ELIGIBLE"),
+            "readiness_score": eval_res.get("role_readiness_score", 0.0),
+            "failed_skills": eval_res.get("failed_skills", []),
+            "passed_skills": eval_res.get("passed_skills", [])
+        })
+
+    # Active Skill Gaps
+    gaps = db.query(SkillGap, Skill).join(Skill, SkillGap.skill_id == Skill.id).filter(
+        SkillGap.student_id == student.id
+    ).all()
+    gap_list = [
+        {
+            "skill_name": sk.canonical_name,
+            "current_score": g.current_score,
+            "required_score": g.required_score,
+            "gap_points": g.gap_points,
+            "priority": g.priority
+        }
+        for g, sk in gaps
+    ]
+
     return {
         "profile": {
             "id": student.id,
@@ -194,8 +238,33 @@ def get_student_details_for_placement(
         },
         "skills": skill_list,
         "evidence": evidence_list,
-        "mastery_history": history_list
+        "mastery_history": history_list,
+        "job_eligibility": job_eligibility,
+        "skill_gaps": gap_list
     }
+
+
+@router.post("/students/{student_id}/sync")
+def sync_student_state_endpoint(
+    student_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["PLACEMENT_CELL", "TRAINER"]))
+):
+    """
+    Forces instant recalculation and cross-system state synchronization for a specific student.
+    """
+    student = db.query(Student).filter(
+        or_(Student.student_id == student_id, Student.id == student_id)
+    ).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    res = sync_student_readiness_and_eligibility(db, student, reason="Manual Placement Cell Sync")
+    return {
+        "message": "Student readiness and eligibility synchronized across platform",
+        "sync_details": res
+    }
+
 
 
 @router.get("/at-risk")
