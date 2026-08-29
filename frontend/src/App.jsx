@@ -33,8 +33,10 @@ import DriveManagementPage from './pages/placement/DriveManagementPage';
 // Trainer / Faculty Portal Layout & Pages
 import TrainerLayout from './layouts/TrainerLayout';
 import TrainerDashboard from './pages/trainer/TrainerDashboard';
+import TrainerCohortsPage from './pages/trainer/TrainerCohortsPage';
 import TrainerCohortDetailsPage from './pages/trainer/TrainerCohortDetailsPage';
 import TrainerGradingPage from './pages/trainer/TrainerGradingPage';
+
 
 // Protected Route Guard
 const ProtectedRoute = ({ children, allowedRole }) => {
@@ -128,9 +130,10 @@ export default function App() {
         }
       >
         <Route path="dashboard" element={<TrainerDashboard />} />
-        <Route path="cohorts" element={<TrainerDashboard />} />
+        <Route path="cohorts" element={<TrainerCohortsPage />} />
         <Route path="cohorts/:id" element={<TrainerCohortDetailsPage />} />
         <Route path="grading" element={<TrainerGradingPage />} />
+
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
 
